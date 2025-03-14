@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Twitch-Sub Estimator</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='reset.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='generic.css') }}"/>
+    <style>
+        pre {
+            user-select: all;
+            -moz-user-select: all;
+            -webkit-user-select: all;
+            overflow-x: scroll;
+            display: inline-block;
+            max-width: 650px;
+        }
+
+    </style>
+</head>
+<body>
+<div id="top" class="page" role="document">
+    <main role="main">
+        <section id="forms">
+            <h1>Der Quellenangabenfinder</h1>
+            <form>
+                <fieldset id="forms__input">
+                    <legend>Ausprobieren?</legend>
+                    <p>
+                        <label for="videoURL">Link</label>
+                        <input id="videoURL" name="videoURL" type="text" size="70"
+                               placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"/>
+                    </p>
+                    <pre id="videoData"></pre>
+                </fieldset>
+            </form>
+        </section>
+        <section>
+            <header>
+                <h2>Was ist das hier?</h2>
+            </header>
+            <p>
+                Manche Leute streamen auf Twitch. Und manche zeigen dabei Videos und diskutieren die dann live.<br/>
+                Rechtlich ist ein Zitat. Und ein Zitat brauch eine Quellenangabe. Und Quellen für Online-Videos gibt man
+                in der Regel mit Titel, Urheber*in, Jahr und dem Link als Fundstelle an.
+            </p>
+            <p>
+                Freilich kann man das alles irgendwie jedes Mal von Hand machen. Das ist nur manchmal bisschen
+                unhandlich. Dieses Tool hier versteht aktuell Links zu YouTube und die Mediatheken von ARD und ZDF und
+                besorgt dann die entsprechenden Meta-Daten für die Quellenangabe maschinenlesbar in JSON.
+            </p>
+            <p>
+                Diese Seite hier ist nur ein Beispiel, um das mal zu testen. Der wahre Spaß beginnt, wenn man die JSON
+                selbst automatisiert zum Beispiel mit streamer.bot abfragt und den die Daten direkt ins Stream-Overlay
+                und in den Chat schreiben lässt. Die magische URL dafür ist: <code>https://videoinfo.elixirrlicht.dev/?link=[videolink]</code>.
+            </p>
+        </section>
+    </main>
+    <footer>
+        Ein <a href="https://elixirrlicht.dev">Elixirrlicht.Dev</a> Projekt.
+    </footer>
+</div>
+<script>
+    const formElem = document.querySelector("form");
+
+    addEventListener("DOMContentLoaded", (event) => {
+        fd = new FormData(formElem);
+        updateResults(fd);
+    });
+
+    formElem.addEventListener("change", (e) => {
+        fd = new FormData(formElem);
+        updateResults(fd);
+    });
+
+    formElem.addEventListener("submit", (e) => {
+        e.preventDefault();
+        fd = new FormData(formElem);
+        updateResults(fd);
+    });
+
+    async function updateResults(data) {
+        let videoData = document.getElementById("videoData");
+        const result = await fetch(document.location.href + "?link=" + data.get("videoURL"));
+        let json_result = await result.json();
+        console.log(json_result);
+        videoData.innerText = JSON.stringify(json_result, null, 2);
+    }
+</script>
+</body>
+</html>
