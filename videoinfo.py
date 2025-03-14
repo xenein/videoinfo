@@ -1,11 +1,10 @@
 import logging
 from enum import Enum
 from typing import Any
-
-import sentry_sdk
 from urllib.parse import urlparse, parse_qs
 
 import requests
+import sentry_sdk
 import waitress
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, render_template
@@ -25,7 +24,7 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         parsed = urlparse(video_link)
         qs = parse_qs(parsed.query)
         if "youtube.com/watch" in video_link:
-            video_id = qs.get("v")
+            video_id = qs.get("v")[0]
         elif "youtu.be" in video_link:
             video_id = parsed.path[1:]
         else:
