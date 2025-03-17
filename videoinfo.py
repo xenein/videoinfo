@@ -13,7 +13,7 @@ sentry_sdk.init(
     dsn="https://770d8abe75a52fa055335de08b9a7c03@o4508977197940736.ingest.de.sentry.io/4508977200758864"
 )
 
-Host = Enum("Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3)])
+Host = Enum("Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4)])
 
 app = Flask(__name__)
 
@@ -35,6 +35,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link, Host.ZDF
     elif "ard" in video_link:
         return video_link, Host.ARD
+    elif "vimeo" in video_link:
+        return video_link, Host.VIMEO
 
 
 def fetch_video_soup(video_url: str):
@@ -90,6 +92,20 @@ def get_ard_dict(video_url: str) -> dict:
     )
 
 
+def get_vimeo_dict(video_url: str) -> dict:
+    vimeo_parsed = urlparse(video_url)
+    vimeo_video_id = vimeo_parsed.path.split("/")[-1]
+    r = requests.get(
+        f"https://vimeo.com/api/oembed.json?url=https://vimeo.com/{vimeo_video_id}"
+    ).json()
+    return dict(
+        title=r.get("title"),
+        url=f"https://www.vimeo.com/{vimeo_video_id}",
+        channel=r.get("author_name"),
+        year=r.get("upload_date").split("-")[0],
+    )
+
+
 @app.route("/")
 def index():
     link = request.args.get("link")
@@ -97,6 +113,8 @@ def index():
         guess_link, host = normalize_link(link)
         if host == Host.ARD:
             video_dict = get_ard_dict(link)
+        elif host == Host.VIMEO:
+            video_dict = get_vimeo_dict(link)
         else:
             soup = fetch_video_soup(guess_link)
             video_dict = get_video_dict(soup, host)
