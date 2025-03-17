@@ -1,4 +1,5 @@
 import logging
+import os
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse, parse_qs
@@ -7,11 +8,16 @@ import requests
 import sentry_sdk
 import waitress
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
 
-sentry_sdk.init(
-    dsn="https://770d8abe75a52fa055335de08b9a7c03@o4508977197940736.ingest.de.sentry.io/4508977200758864"
-)
+load_dotenv()
+
+if dsn := os.environ.get("sentry_dsn"):
+    sentry_sdk.init(
+        dsn=dsn,
+        send_default_pii=True
+    )
 
 Host = Enum("Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4)])
 
