@@ -16,6 +16,10 @@
             max-width: 650px;
         }
 
+        blockquote {
+            font-style: normal;
+        }
+
     </style>
 </head>
 <body>
@@ -31,6 +35,9 @@
                         <input id="videoURL" name="videoURL" type="text" size="70"
                                placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"/>
                     </p>
+                    <p>Kurz und bündig:</p>
+                    <blockquote id="copyright-example"></blockquote>
+                    <p>Wie es aus der API rauskommt:</p>
                     <pre id="videoData"></pre>
                 </fieldset>
             </form>
@@ -41,8 +48,8 @@
             </header>
             <p>
                 Manche Leute streamen auf Twitch. Und manche zeigen dabei Videos und diskutieren die dann live.<br/>
-                Rechtlich ist ein Zitat. Und ein Zitat brauch eine Quellenangabe. Und Quellen für Online-Videos gibt man
-                in der Regel mit Titel, Urheber*in, Jahr und dem Link als Fundstelle an.
+                Rechtlich ist das ein Zitat. Und ein Zitat braucht eine Quellenangabe. Und Quellen für Online-Videos
+                gibt man in der Regel mit Urheber*in, Jahr und dem Link als Fundstelle an.
             </p>
             <p>
                 Freilich kann man das alles irgendwie jedes Mal von Hand machen. Das ist nur manchmal bisschen
@@ -82,10 +89,13 @@
 
     async function updateResults(data) {
         let videoData = document.getElementById("videoData");
+        let example = document.getElementById("copyright-example");
+
         const result = await fetch(document.location.href + "?link=" + data.get("videoURL"));
         let json_result = await result.json();
         console.log(json_result);
         videoData.innerText = JSON.stringify(json_result, null, 2);
+        example.innerText = " © " + json_result.year + " | " + json_result.channel + " | " + json_result.url;
     }
 </script>
 </body>
