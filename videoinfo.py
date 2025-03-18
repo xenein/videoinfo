@@ -65,12 +65,11 @@ def get_video_dict(soup: BeautifulSoup, host: Host) -> dict:
             sieved.get("content") for sieved in soup.select("meta[property='author']")
         ]
 
-        # authors = map(
-        #     lambda x: x.get("content"), soup.select("meta[property='og:author']")
-        # )
+        path = soup.select("meta[property='og:url']").get("content")
+
         return dict(
             title=soup.select_one("meta[property='og:title']").get("content"),
-            url=f"https://media.ccc.de{soup.select_one("meta[property='og:url']").get("content")}",
+            url=f"https://media.ccc.de{path}",
             year=soup.select_one("meta[property='og:video:release_date']")
             .get("content")
             .split("-")[0],
