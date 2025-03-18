@@ -18,6 +18,9 @@
 
         blockquote {
             font-style: normal;
+            user-select: all;
+            -moz-user-select: all;
+            -webkit-user-select: all;
         }
 
     </style>
@@ -53,15 +56,24 @@
             </p>
             <p>
                 Freilich kann man das alles irgendwie jedes Mal von Hand machen. Das ist nur manchmal bisschen
-                unhandlich. Dieses Tool hier versteht aktuell Links zu YouTube, Vimeo und die Mediatheken von ARD und
-                ZDF und
-                besorgt dann die entsprechenden Meta-Daten für die Quellenangabe maschinenlesbar in JSON.
+                unhandlich. Dieses Tool hier versteht aktuell Links zu YouTube, Vimeo, media.ccc.de und die Mediatheken
+                von ARD und ZDF und besorgt dann die entsprechenden Meta-Daten für die Quellenangabe maschinenlesbar in
+                JSON.
             </p>
             <p>
                 Diese Seite hier ist nur ein Beispiel, um das mal zu testen. Der wahre Spaß beginnt, wenn man die JSON
                 selbst automatisiert zum Beispiel mit streamer.bot abfragt und den die Daten direkt ins Stream-Overlay
                 und in den Chat schreiben lässt. Die magische URL dafür ist: <code>https://videoinfo.elixirrlicht.dev/?link=[videolink]</code>.
+                Das kann dann gescriptet mit curl ungefähr so aussehen:
             </p>
+            <ul>
+                <li><code>curl
+                    "https://videoinfo.elixirrlicht.dev/?link=https://media.ccc.de/v/38c3-what-s-inside-my-train-ticket"</code>
+                </li>
+                <li><code>curl
+                    "https://videoinfo.exlirrlicht.dev/?link=https://www.ardmediathek.de/video/Y3JpZDovL3dkci5kZS9CZWl0cmFnLXNvcGhvcmEtOGJhOWQzMzgtNGIwZC00YWFlLTgxMGMtODhhNzc4NmY4YzRk"</code>
+                </li>
+            </ul>
         </section>
     </main>
     <footer>

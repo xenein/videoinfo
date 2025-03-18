@@ -14,17 +14,17 @@ from flask import Flask, request, jsonify, render_template
 load_dotenv()
 
 if dsn := os.environ.get("sentry_dsn"):
-    sentry_sdk.init(
-        dsn=dsn,
-        send_default_pii=True
-    )
+    sentry_sdk.init(dsn=dsn, send_default_pii=True)
 
-Host = Enum("Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4)])
+Host = Enum(
+    "Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4), ("MEDIACCCDE", 5)]
+)
 
 app = Flask(__name__)
 
 
 def normalize_link(video_link: str) -> tuple[str, Any] | None:
+    video_link = video_link.strip().lower()
     if "youtube" in video_link.replace(".", ""):
         video_id = ""
         parsed = urlparse(video_link)
@@ -43,6 +43,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link, Host.ARD
     elif "vimeo" in video_link:
         return video_link, Host.VIMEO
+    elif "media.ccc.de" in video_link:
+        return video_link.split("#")[0], Host.MEDIACCCDE
 
 
 def fetch_video_soup(video_url: str):
@@ -68,6 +70,22 @@ def get_video_dict(soup: BeautifulSoup, host: Host) -> dict:
             .get("content")
             .split("-")[0],
             channel="ZDF",
+        )
+    elif host == Host.MEDIACCCDE:
+        authors = [
+            sieved.get("content") for sieved in soup.select("meta[property='author']")
+        ]
+
+        # authors = map(
+        #     lambda x: x.get("content"), soup.select("meta[property='og:author']")
+        # )
+        return dict(
+            title=soup.select_one("meta[property='og:title']").get("content"),
+            url=f"https://media.ccc.de{soup.select_one("meta[property='og:url']").get("content")}",
+            year=soup.select_one("meta[property='og:video:release_date']")
+            .get("content")
+            .split("-")[0],
+            channel=", ".join(authors),
         )
 
 
