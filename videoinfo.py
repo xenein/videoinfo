@@ -7,6 +7,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 import sentry_sdk
 import waitress
+import yt_dlp
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
@@ -48,30 +49,18 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
 
 
 def fetch_video_soup(video_url: str):
-    r = requests.get(video_url).text
-    return BeautifulSoup(r, "html.parser")
+    r = requests.get(
+        video_url,
+        headers={
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0"
+        },
+    )
+    app.logger.info(f"fetched {video_url}, status code: {r.status_code}")
+    return BeautifulSoup(r.text, "html.parser")
 
 
 def get_video_dict(soup: BeautifulSoup, host: Host) -> dict:
-    if host == Host.YOUTUBE:
-        return dict(
-            title=soup.select_one("meta[property='og:title']").get("content"),
-            url=soup.select_one("meta[property='og:url']").get("content"),
-            year=soup.select_one("meta[itemprop='datePublished']")
-            .get("content")
-            .split("-")[0],
-            channel=soup.select_one("link[itemprop='name']").get("content"),
-        )
-    elif host == Host.ZDF:
-        return dict(
-            title=soup.select_one("meta[property='og:title']").get("content"),
-            url=soup.select_one("link[rel='canonical']").get("href"),
-            year=soup.select_one("meta[name='zdf:publicationDate']")
-            .get("content")
-            .split("-")[0],
-            channel="ZDF",
-        )
-    elif host == Host.MEDIACCCDE:
+    if host == Host.MEDIACCCDE:
         authors = [
             sieved.get("content") for sieved in soup.select("meta[property='author']")
         ]
@@ -130,12 +119,71 @@ def get_vimeo_dict(video_url: str) -> dict:
     )
 
 
+def get_youtube_dict(video_url: str) -> dict:
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
+        metadata = ydl.extract_info(video_url, download=False)
+        return dict(
+            title=metadata.get("title"),
+            url=metadata.get("webpage_url"),
+            year=metadata.get("upload_date")[:4],
+            channel=metadata.get("uploader"),
+        )
+
+
+def get_zdf_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    canonical_url = soup.select_one("link[rel='canonical']").get("href")
+    canonical_id = urlparse(canonical_url).path.split("/")[-1]
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0",
+        "Content-Type": "application/json",
+        "Referer": "https://www.zdf.de",
+        "Origin": "https://www.zdf.de",
+        "Priority": "u=4",
+        "TE": "Trailers",
+        "Api-Auth": "Bearer ahBaeMeekaiy5ohsai4bee4ki6Oopoi5quailieb",
+    }
+
+    payload = {
+        "operationName": "VideoByCanonical",
+        "query": """
+            query VideoByCanonical($canonical: String!) {
+                videoByCanonical(canonical: $canonical) {
+                title
+                editorialDate
+                sharingUrl
+                }
+            }
+        """,
+        "variables": {"canonical": f"{canonical_id}"},
+    }
+
+    graph = requests.post(
+        "https://api.zdf.de/graphql", headers=headers, json=payload
+    ).json()
+
+    metadata = graph.get("data").get("videoByCanonical")
+
+    return dict(
+        title=metadata.get("title"),
+        year=metadata.get("editorialDate")[:4],
+        channel="ZDF",
+        url=metadata.get("sharingUrl"),
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
         video_dict = get_ard_dict(link)
     elif host == Host.VIMEO:
         video_dict = get_vimeo_dict(link)
+    elif host == Host.YOUTUBE:
+        video_dict = get_youtube_dict(link)
+    elif host == Host.ZDF:
+        video_dict = get_zdf_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
@@ -146,6 +194,7 @@ def build_video_dict(link: str) -> dict:
 def index():
     link = request.args.get("link")
     if link:
+        app.logger.info(f"trying {link}")
         video_dict = build_video_dict(link)
         return jsonify(video_dict)
     else:
@@ -161,17 +210,5 @@ def compact():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     waitress.serve(app, listen="*:56565")
-    # video_url = "https://www.youtube.com/watch?v=l7Q-m-oiPeE"
-    # video_soup = fetch_video_soup(guess_yt_link(video_url))
-    #
-    # title = video_soup.select_one("meta[property='og:title']").get("content")
-    # url = video_soup.select_one("meta[property='og:url']").get("content")
-    # year = video_soup.select_one("meta[itemprop='datePublished']").get("content").split("-")[0]
-    # channel = video_soup.select_one("link[itemprop='name']").get("content")
-    #
-    # print(title)
-    # print(url)
-    # print(year)
-    # print(channel)
