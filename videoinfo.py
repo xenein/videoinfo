@@ -205,7 +205,7 @@ def compact():
     link = request.args.get("link")
     if link:
         video_dict = build_video_dict(link)
-        return f"© {video_dict.get("year")} | {video_dict.get("channel")} | {video_dict.get("url")}"
+        return f'© {video_dict.get("year")} | {video_dict.get("channel")} | {video_dict.get("url")}'
 
 
 if __name__ == "__main__":
