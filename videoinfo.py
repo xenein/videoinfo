@@ -130,21 +130,34 @@ def get_vimeo_dict(video_url: str) -> dict:
     )
 
 
+def build_video_dict(link: str) -> dict:
+    guess_link, host = normalize_link(link)
+    if host == Host.ARD:
+        video_dict = get_ard_dict(link)
+    elif host == Host.VIMEO:
+        video_dict = get_vimeo_dict(link)
+    else:
+        soup = fetch_video_soup(guess_link)
+        video_dict = get_video_dict(soup, host)
+    return video_dict
+
+
 @app.route("/")
 def index():
     link = request.args.get("link")
     if link:
-        guess_link, host = normalize_link(link)
-        if host == Host.ARD:
-            video_dict = get_ard_dict(link)
-        elif host == Host.VIMEO:
-            video_dict = get_vimeo_dict(link)
-        else:
-            soup = fetch_video_soup(guess_link)
-            video_dict = get_video_dict(soup, host)
+        video_dict = build_video_dict(link)
         return jsonify(video_dict)
     else:
         return render_template("index.html")
+
+
+@app.route("/compact")
+def compact():
+    link = request.args.get("link")
+    if link:
+        video_dict = build_video_dict(link)
+        return f"© {video_dict.get("year")} | {video_dict.get("channel")} | {video_dict.get("url")}"
 
 
 if __name__ == "__main__":
