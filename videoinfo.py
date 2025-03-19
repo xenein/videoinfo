@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse, parse_qs
@@ -129,11 +130,21 @@ def get_youtube_dict(video_url: str) -> dict:
         )
 
 
+def get_zdf_key(zdf_source: str) -> str:
+    compiled_regex = re.compile(r"apiToken\\\":\\\"(\w+)\\\"")
+    match = compiled_regex.search(zdf_source)
+    if match:
+        return match.group(1)
+    else:
+        return "ahBaeMeekaiy5ohsai4bee4ki6Oopoi5quailieb"
+
+
 def get_zdf_dict(video_url: str) -> dict:
     r = requests.get(video_url)
     soup = BeautifulSoup(r.text, "html.parser")
     canonical_url = soup.select_one("link[rel='canonical']").get("href")
     canonical_id = urlparse(canonical_url).path.split("/")[-1]
+    api_key = get_zdf_key(r.text)
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0",
@@ -142,7 +153,7 @@ def get_zdf_dict(video_url: str) -> dict:
         "Origin": "https://www.zdf.de",
         "Priority": "u=4",
         "TE": "Trailers",
-        "Api-Auth": "Bearer ahBaeMeekaiy5ohsai4bee4ki6Oopoi5quailieb",
+        "Api-Auth": f"Bearer {api_key}",
     }
 
     payload = {
