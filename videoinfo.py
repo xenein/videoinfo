@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from enum import Enum
+from logging.config import dictConfig
 from typing import Any
 from urllib.parse import urlparse, parse_qs
 
@@ -17,6 +18,26 @@ load_dotenv()
 
 if dsn := os.environ.get("sentry_dsn"):
     sentry_sdk.init(dsn=dsn, send_default_pii=True)
+
+
+dictConfig(
+    {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+            }
+        },
+        "handlers": {
+            "wsgi": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://flask.logging.wsgi_errors_stream",
+                "formatter": "default",
+            }
+        },
+        "root": {"level": "INFO", "handlers": ["wsgi"]},
+    }
+)
 
 Host = Enum(
     "Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4), ("MEDIACCCDE", 5)]
@@ -134,8 +155,10 @@ def get_zdf_key(zdf_source: str) -> str:
     compiled_regex = re.compile(r"apiToken\\\":\\\"(\w+)\\\"")
     match = compiled_regex.search(zdf_source)
     if match:
+        app.logger.info("extracted zdf api-token")
         return match.group(1)
     else:
+        app.logger.info("unable to extract zdf api-token, falling back")
         return "ahBaeMeekaiy5ohsai4bee4ki6Oopoi5quailieb"
 
 
