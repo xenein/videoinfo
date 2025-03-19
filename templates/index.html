@@ -37,6 +37,7 @@
                         <label for="videoURL">Link</label>
                         <input id="videoURL" name="videoURL" type="text" size="70"
                                placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"/>
+                        <input type="submit" value="Abfragen"/>
                     </p>
                     <p>Kurz und bündig:</p>
                     <blockquote id="copyright-example"></blockquote>
@@ -81,6 +82,13 @@
                 <code>$(urlfetch https://videoinfo.elixirrlicht.dev/compact?link=https://youtu.be/y6120QOlsfU)</code>
                 und schwupps hatman alles kompakt zum Pinnen im Chat.
             </p>
+            <p>
+                Die Auswertung erfolgt serverseitig. Eingeschickte Links werden nur zum Ermitteln der Meta-Daten
+                genutzt.
+                Eine weitere Speicherung oder anderweitige Verarbeitung erfolgt nicht. Sollte es auf der Serverseite zu
+                Fehlern kommen, werden Informationen darüber an Sentry übermittelt. Die so übermittelten Daten werden
+                ausschließlich zur Fehlerbehebung genutzt und nicht länger als dafür notwendig gespeichert.
+            </p>
         </section>
     </main>
     <footer>
@@ -102,6 +110,12 @@
 
     formElem.addEventListener("submit", (e) => {
         e.preventDefault();
+        fd = new FormData(formElem);
+        updateResults(fd);
+    });
+
+    formElem.addEventListener("paste", (e, target) => {
+        target.value = e.clipboardData.getData('text/plain');
         fd = new FormData(formElem);
         updateResults(fd);
     });
