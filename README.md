@@ -18,5 +18,6 @@ Das geht bisher für:
 - ZDF-Mediathek
 - Vimeo
 - media.ccc.de
+- twitch.tv-VoDs
 
 

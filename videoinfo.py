@@ -40,7 +40,15 @@ dictConfig(
 )
 
 Host = Enum(
-    "Host", [("YOUTUBE", 1), ("ARD", 2), ("ZDF", 3), ("VIMEO", 4), ("MEDIACCCDE", 5)]
+    "Host",
+    [
+        ("YOUTUBE", 1),
+        ("ARD", 2),
+        ("ZDF", 3),
+        ("VIMEO", 4),
+        ("MEDIACCCDE", 5),
+        ("TWITCH", 6),
+    ],
 )
 
 app = Flask(__name__)
@@ -68,6 +76,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link, Host.VIMEO
     elif "media.ccc.de" in video_link:
         return video_link.split("#")[0], Host.MEDIACCCDE
+    elif "twitch.tv/video" in video_link:
+        return video_link.split("?")[0], Host.TWITCH
 
 
 def fetch_video_soup(video_url: str):
@@ -207,6 +217,26 @@ def get_zdf_dict(video_url: str) -> dict:
     )
 
 
+def get_twitch_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    # ld = json.loads(soup.select_one("script[type='jd+json']").text)
+    # ld = ld.get("@graph")[0]
+    return dict(
+        title=soup.select_one("meta[property='og:title']")
+        .get("content")
+        .rsplit("-", maxsplit=1)[0]
+        .strip(),
+        channel=soup.select_one("meta[property='og:description']")
+        .get("content")
+        .split(" ")[0],
+        year=soup.select_one("meta[property='og:video:release_date']")
+        .get("content")
+        .split("-")[0],
+        url=soup.select_one("link[rel='canonical']").get("href"),
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -217,6 +247,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_youtube_dict(link)
     elif host == Host.ZDF:
         video_dict = get_zdf_dict(link)
+    elif host == Host.TWITCH:
+        video_dict = get_twitch_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
