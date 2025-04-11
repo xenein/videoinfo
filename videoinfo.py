@@ -9,7 +9,6 @@ from urllib.parse import urlparse, parse_qs
 import requests
 import sentry_sdk
 import waitress
-import yt_dlp
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
@@ -18,6 +17,8 @@ load_dotenv()
 
 if dsn := os.environ.get("sentry_dsn"):
     sentry_sdk.init(dsn=dsn, send_default_pii=True)
+
+yt_key = os.environ.get("yt_key")
 
 
 dictConfig(
@@ -55,7 +56,6 @@ app = Flask(__name__)
 
 
 def normalize_link(video_link: str) -> tuple[str, Any] | None:
-    video_link = video_link.strip().lower()
     if "youtube" in video_link.replace(".", ""):
         video_id = ""
         parsed = urlparse(video_link)
@@ -150,15 +150,39 @@ def get_vimeo_dict(video_url: str) -> dict:
     )
 
 
+def extract_youtube_id(video_url: str) -> str:
+    video_id = ""
+    parsed = urlparse(video_url)
+    qs = parse_qs(parsed.query)
+    if "youtube.com/watch" in video_url:
+        video_id = qs.get("v")[0]
+    elif "youtu.be" in video_url:
+        video_id = parsed.path[1:]
+
+    return video_id
+
+
 def get_youtube_dict(video_url: str) -> dict:
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
-        metadata = ydl.extract_info(video_url, download=False)
-        return dict(
-            title=metadata.get("title"),
-            url=metadata.get("webpage_url"),
-            year=metadata.get("upload_date")[:4],
-            channel=metadata.get("uploader"),
-        )
+    yt_id = extract_youtube_id(video_url)
+
+    r = requests.get(
+        "https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id="
+        + str(yt_id)
+        + "&key="
+        + str(yt_key)
+    )
+
+    j = r.json()
+
+    video_id = j.get("items")[0].get("id")
+    video_data = j.get("items")[0].get("snippet")
+
+    return dict(
+        title=video_data.get("title"),
+        url="https://youtube.com/watch?v=" + video_id,
+        year=video_data.get("publishedAt")[:4],
+        channel=video_data.get("channelTitle"),
+    )
 
 
 def get_zdf_key(zdf_source: str) -> str:
