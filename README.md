@@ -19,5 +19,6 @@ Das geht bisher für:
 - Vimeo
 - media.ccc.de
 - twitch.tv-VoDs
+- arte.tv
 
 

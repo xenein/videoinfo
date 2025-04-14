@@ -49,6 +49,7 @@ Host = Enum(
         ("VIMEO", 4),
         ("MEDIACCCDE", 5),
         ("TWITCH", 6),
+        ("ARTE", 7),
     ],
 )
 
@@ -78,6 +79,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("#")[0], Host.MEDIACCCDE
     elif "twitch.tv/video" in video_link:
         return video_link.split("?")[0], Host.TWITCH
+    elif "arte.tv" in video_link:
+        return video_link.split("?")[0], Host.ARTE
 
 
 def fetch_video_soup(video_url: str):
@@ -148,6 +151,29 @@ def get_vimeo_dict(video_url: str) -> dict:
         channel=r.get("author_name"),
         year=r.get("upload_date").split("-")[0],
     )
+
+
+def get_arte_dict(video_url: str) -> dict:
+    compiled_regex = re.compile(r"videos/(?P<arte_id>[\w-]+)/")
+    match = compiled_regex.search(video_url)
+    if not match:
+        app.logger.info("no arte video id found")
+    else:
+        app.logger.info("found arte video id")
+        arte_id = match.group("arte_id")
+
+        r = requests.get(f"https://api.arte.tv/api/player/v2/config/de/{arte_id}")
+        j = r.json()
+
+        data = j.get("data").get("attributes")
+
+        channel = data.get("provider")
+        url = data.get("metadata").get("link").get("url")
+        year = data.get("rights").get("begin")[:4]
+        title = data.get("metadata").get("title")
+        if subtitle := data.get("metadata").get("subtitle"):
+            title = f"{title} – {subtitle}"
+        return dict(title=title, year=year, channel=channel, url=url)
 
 
 def extract_youtube_id(video_url: str) -> str:
@@ -273,6 +299,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_zdf_dict(link)
     elif host == Host.TWITCH:
         video_dict = get_twitch_dict(link)
+    elif host == Host.ARTE:
+        video_dict = get_arte_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
