@@ -52,6 +52,7 @@ Host = Enum(
         ("TWITCH", 6),
         ("ARTE", 7),
         ("BELLTOWER", 8),
+        ("VOLKSVERPETZER", 9),
     ],
 )
 
@@ -85,6 +86,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.ARTE
     elif "belltower.news/" in video_link:
         return video_link.split("?")[0], Host.BELLTOWER
+    elif "volksverpetzer.de/" in video_link:
+        return video_link.split("?")[0], Host.VOLKSVERPETZER
     return None
 
 
@@ -319,6 +322,28 @@ def get_belltower_dict(video_url: str) -> dict:
     )
 
 
+def get_volksverpetzer_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    title = soup.select_one("meta[property='og:title']").get("content")
+    url = soup.select_one("link[rel='canonical']").get("href")
+    year = (
+        soup.select_one("meta[property='article:published_time']")
+        .get("content")
+        .split("-")[0]
+    )
+    channel = soup.select_one("meta[property='og:site_name']").get("content")
+    if author := soup.select_one("meta[name='author']").get("content"):
+        channel = f"{author} for {channel}"
+
+    return dict(
+        title=title,
+        year=year,
+        url=url,
+        channel=channel,
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -335,6 +360,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_arte_dict(link)
     elif host == Host.BELLTOWER:
         video_dict = get_belltower_dict(link)
+    elif host == Host.VOLKSVERPETZER:
+        video_dict = get_volksverpetzer_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
