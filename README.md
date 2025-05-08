@@ -1,6 +1,7 @@
 # Was ist das hier?
 
-Ein Tool, um Informationen für Quellenangaben, zum Beispiel für Live-Reaction-Formate zu Videos zu genieren.
+Ein Tool, um Informationen für Quellenangaben, zum Beispiel für Live-Reaction-Formate zu Videos und Artikeln zu
+genieren.
 
 ## Wie geht das?
 
@@ -20,5 +21,6 @@ Das geht bisher für:
 - media.ccc.de
 - twitch.tv-VoDs
 - arte.tv
+- BelltowerNews
 
 

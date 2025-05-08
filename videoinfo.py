@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -50,6 +51,7 @@ Host = Enum(
         ("MEDIACCCDE", 5),
         ("TWITCH", 6),
         ("ARTE", 7),
+        ("BELLTOWER", 8),
     ],
 )
 
@@ -81,6 +83,9 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.TWITCH
     elif "arte.tv" in video_link:
         return video_link.split("?")[0], Host.ARTE
+    elif "belltower.news/" in video_link:
+        return video_link.split("?")[0], Host.BELLTOWER
+    return None
 
 
 def fetch_video_soup(video_url: str):
@@ -287,6 +292,33 @@ def get_twitch_dict(video_url: str) -> dict:
     )
 
 
+def get_belltower_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    title = soup.select_one("meta[property='og:title']").get("content")
+    year = (
+        soup.select_one("meta[property='article:published_time']")
+        .get("content")
+        .split("-")[0]
+    )
+    url = soup.select_one("link[rel='canonical']").get("href")
+    channel = soup.select_one("meta[property='og:site_name']").get("content")
+
+    try:
+        ld = soup.select_one("[type='application/ld+json']").text
+        j = json.loads(ld)
+        channel = f'{j.get("@graph")[-1].get("author").get("name")} für {channel}'
+    except AttributeError:
+        pass
+
+    return dict(
+        title=title,
+        year=year,
+        url=url,
+        channel=channel,
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -301,6 +333,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_twitch_dict(link)
     elif host == Host.ARTE:
         video_dict = get_arte_dict(link)
+    elif host == Host.BELLTOWER:
+        video_dict = get_belltower_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
