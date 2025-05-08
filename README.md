@@ -22,5 +22,6 @@ Das geht bisher für:
 - twitch.tv-VoDs
 - arte.tv
 - BelltowerNews
+- Volksverpetzer
 
 
