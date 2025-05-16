@@ -23,5 +23,6 @@ Das geht bisher für:
 - arte.tv
 - BelltowerNews
 - Volksverpetzer
+- Geo.de
 
 

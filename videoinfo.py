@@ -53,6 +53,7 @@ Host = Enum(
         ("ARTE", 7),
         ("BELLTOWER", 8),
         ("VOLKSVERPETZER", 9),
+        ("GEO", 10),
     ],
 )
 
@@ -88,6 +89,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.BELLTOWER
     elif "volksverpetzer.de/" in video_link:
         return video_link.split("?")[0], Host.VOLKSVERPETZER
+    elif "geo.de/" in video_link:
+        return video_link.split("?")[0], Host.GEO
     return None
 
 
@@ -344,6 +347,22 @@ def get_volksverpetzer_dict(video_url: str) -> dict:
     )
 
 
+def get_geo_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    ld = json.loads(soup.select_one("script[type='application/ld+json']").string)[0]
+    channel = "geo.de"
+    if author := ld.get("author").get("name"):
+        channel = f"{author} für geo.de"
+
+    return dict(
+        title=ld.get("headline"),
+        year=ld.get("datePublished").split("-")[0],
+        url=ld.get("mainEntityOfPage").get("@id"),
+        channel=channel,
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -362,6 +381,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_belltower_dict(link)
     elif host == Host.VOLKSVERPETZER:
         video_dict = get_volksverpetzer_dict(link)
+    elif host == Host.GEO:
+        video_dict = get_geo_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
