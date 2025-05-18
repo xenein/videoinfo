@@ -24,5 +24,6 @@ Das geht bisher für:
 - BelltowerNews
 - Volksverpetzer
 - Geo.de
+- sueddeutsche.de
 
 
