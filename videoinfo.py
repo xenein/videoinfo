@@ -56,6 +56,7 @@ Host = Enum(
         ("GEO", 10),
         ("SZ", 11),
         ("FREITAG", 12),
+        ("NETZPOLITIK", 13),
     ],
 )
 
@@ -97,6 +98,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.SZ
     elif "freitag.de/" in video_link:
         return video_link.split("?")[0], Host.FREITAG
+    elif "netzpolitik.org/" in video_link:
+        return video_link.split("?")[0], Host.NETZPOLITIK
     return None
 
 
@@ -402,6 +405,24 @@ def get_freitag_dict(video_url: str) -> dict:
     )
 
 
+def get_netzpolitik_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    channel = "netzpolitik.org"
+    if author := soup.select_one("meta[property='article:author']").get("content"):
+        channel = f"{author} für {channel}"
+
+    return dict(
+        title=soup.select_one("meta[property='og:title']").get("content"),
+        year=soup.select_one("meta[property='article:published_time']")
+        .get("content")
+        .split("-")[0],
+        channel=channel,
+        url=soup.select_one("link[rel='shortlink']").get("href"),
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -426,6 +447,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_sz_dict(link)
     elif host == Host.FREITAG:
         video_dict = get_freitag_dict(link)
+    elif host == Host.NETZPOLITIK:
+        video_dict = get_netzpolitik_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)

@@ -26,5 +26,6 @@ Das geht bisher für:
 - Geo.de
 - sueddeutsche.de
 - freitag.de
+- netzpolitik.org
 
 
