@@ -25,5 +25,6 @@ Das geht bisher für:
 - Volksverpetzer
 - Geo.de
 - sueddeutsche.de
+- freitag.de
 
 

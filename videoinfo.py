@@ -55,6 +55,7 @@ Host = Enum(
         ("VOLKSVERPETZER", 9),
         ("GEO", 10),
         ("SZ", 11),
+        ("FREITAG", 12),
     ],
 )
 
@@ -94,6 +95,8 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.GEO
     elif "sueddeutsche.de/" in video_link:
         return video_link.split("?")[0], Host.SZ
+    elif "freitag.de/" in video_link:
+        return video_link.split("?")[0], Host.FREITAG
     return None
 
 
@@ -372,13 +375,30 @@ def get_sz_dict(video_url: str) -> dict:
     ld = json.loads(soup.select_one("script[type='application/ld+json']").string)
     channel = "Süddeutsche Zeitung"
     if authors := ld.get("author"):
-        channel = f"{", ".join(map(lambda x: x.get("name"), authors))} für Süddeutsche Zeitung"
+        channel = f"{', '.join(map(lambda x: x.get('name'), authors))} für Süddeutsche Zeitung"
 
     return dict(
         title=ld.get("headline"),
         year=ld.get("datePublished").split("-")[0],
         url=ld.get("url"),
         channel=channel,
+    )
+
+
+def get_freitag_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    ld = json.loads(soup.select_one("script[type='application/ld+json']").string)
+
+    authors = ld.get("publisher").get("name")
+    if editors := ld.get("author"):
+        authors = f"{editors.get('name')} für {authors}"
+
+    return dict(
+        title=ld.get("headline"),
+        year=ld.get("datePublished").split("-")[0],
+        channel=authors,
+        url=soup.select_one("link[rel='canonical']").get("href"),
     )
 
 
@@ -404,6 +424,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_geo_dict(link)
     elif host == Host.SZ:
         video_dict = get_sz_dict(link)
+    elif host == Host.FREITAG:
+        video_dict = get_freitag_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
