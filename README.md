@@ -27,5 +27,7 @@ Das geht bisher für:
 - sueddeutsche.de
 - freitag.de
 - netzpolitik.org
+- nationalgeographic.de
+
 
 
