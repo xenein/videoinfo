@@ -28,6 +28,7 @@ Das geht bisher für:
 - freitag.de
 - netzpolitik.org
 - nationalgeographic.de
+- substack
 
 
 

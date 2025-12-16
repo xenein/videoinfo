@@ -21,7 +21,6 @@ if dsn := os.environ.get("sentry_dsn"):
 
 yt_key = os.environ.get("yt_key")
 
-
 dictConfig(
     {
         "version": 1,
@@ -58,6 +57,7 @@ Host = Enum(
         ("FREITAG", 12),
         ("NETZPOLITIK", 13),
         ("NATGEO", 14),
+        ("SUBSTACK", 15),
     ],
 )
 
@@ -103,7 +103,67 @@ def normalize_link(video_link: str) -> tuple[str, Any] | None:
         return video_link.split("?")[0], Host.NETZPOLITIK
     elif "nationalgeographic.de/" in video_link:
         return video_link.split("?")[0], Host.NATGEO
+    elif "substack.com/" in video_link:
+        return video_link.split("?")[0], Host.SUBSTACK
     return None
+
+
+def soup_extractor(
+        soup: BeautifulSoup, selector: str, extraction_key: str, single: bool = False
+) -> str:
+    """
+    extract one metadata from given soup.
+    can be used for single data, like a canonical link, of which there will usually be exactly one
+    or for data with multiple instances: some articles will list multiple authors, for example.
+    if there is multiple results those will be joined with ", "
+    :param soup: already initialized beautifulsoup object
+    :param selector: a css style selector pointing to the metadata you want to extract
+    :param extraction_key: the attribute within the select tag(s) you want to extract. Can be "text" for the actual textual content of the tag(s).
+    :param single: defaults to False. If set to true, results will not be joined and instead the first one is returned
+    :return: the extracted metadata, if there is instances found with the selector, they are joined by ", "
+    """
+    selected = soup.select(selector)
+    if extraction_key != "text":
+        selects = map(lambda x: x.get(extraction_key), selected)
+    else:
+        selects = map(lambda x: x.text, selected)
+    if single:
+        return next(selects)
+    return ", ".join(selects)
+
+
+def ld_extractor(
+        source: dict, path: list[str | int], target_key: str | None, single: bool = False
+) -> str:
+    """
+    extract metadata from a source dict. this will usually be a linked data json object, but can really be any dictionary.
+
+    :param source: the dictionary to extract metadata from
+    :param path: the sequence of keys to get from the source to find the wanted metadata
+    :param target_key: sometimes you want a specific attribute within. for example some lds will have a list of authors, but you might only care for their names
+    :param single: defaults to False, if given, lists will not be joined and instead the first one is returned
+    :return: the extracted metadata will be returned as a string
+    """
+    ld = source
+    for item in path:
+        if type(item) is int:
+            ld = ld[item]
+        else:
+            ld = ld.get(item)
+
+    if type(ld) is str:
+        return ld
+
+    if target_key:
+        assert type(ld) == list
+        ld = map(lambda x: x.get(target_key), ld)
+    else:
+        ld = map(lambda x: x, ld)
+
+    if single:
+        return next(ld)
+    else:
+        return ", ".join(ld)
 
 
 def fetch_video_soup(video_url: str):
@@ -148,9 +208,9 @@ def get_ard_dict(video_url: str) -> dict:
 
     year = ""
     if (
-        "widgets" in r.keys()
-        and len(r["widgets"]) > 0
-        and "broadcastedOn" in r["widgets"][0].keys()
+            "widgets" in r.keys()
+            and len(r["widgets"]) > 0
+            and "broadcastedOn" in r["widgets"][0].keys()
     ):
         year = r.get("widgets")[0].get("broadcastedOn").split("-")[0]
 
@@ -449,6 +509,27 @@ def get_natgeo_dict(video_url: str) -> dict:
     )
 
 
+def get_substack_dict(video_url: str) -> dict:
+    r = requests.get(video_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    ld = json.loads(soup.select_one("script[type='application/ld+json']").string)
+
+    channel = ld.get("publisher").get("name")
+
+    if author := ld.get("author")[0].get("name"):
+        channel = f"{author} für {channel}"
+
+    year = ld.get("datePublished").split("-")[0]
+    title = ld.get("headline")
+
+    return dict(
+        channel=channel,
+        title=title,
+        year=year,
+        url=soup.select_one("link[rel='canonical']").get("href"),
+    )
+
+
 def build_video_dict(link: str) -> dict:
     guess_link, host = normalize_link(link)
     if host == Host.ARD:
@@ -477,6 +558,8 @@ def build_video_dict(link: str) -> dict:
         video_dict = get_netzpolitik_dict(link)
     elif host == Host.NATGEO:
         video_dict = get_natgeo_dict(link)
+    elif host == Host.SUBSTACK:
+        video_dict = get_substack_dict(link)
     else:
         soup = fetch_video_soup(guess_link)
         video_dict = get_video_dict(soup, host)
