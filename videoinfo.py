@@ -183,7 +183,7 @@ def get_video_dict(soup: BeautifulSoup, host: Host) -> dict:
             sieved.get("content") for sieved in soup.select("meta[property='author']")
         ]
 
-        path = soup.select("meta[property='og:url']").get("content")
+        path = soup.select_one("meta[property='og:url']").get("content")
 
         return dict(
             title=soup.select_one("meta[property='og:title']").get("content"),
